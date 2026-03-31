@@ -1,0 +1,7 @@
+.env
+storage/uploads/*
+storage/processed/*
+storage/queue/*
+!storage/uploads/.gitkeep
+!storage/processed/.gitkeep
+!storage/queue/.gitkeep
