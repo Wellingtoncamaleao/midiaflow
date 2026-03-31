@@ -1,0 +1,53 @@
+FROM php:8.2-apache
+
+# Extensoes PHP necessarias (GD + cURL)
+RUN apt-get update && apt-get install -y \
+    libgd-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    libwebp-dev \
+    libfreetype6-dev \
+    ffmpeg \
+    python3 \
+    curl \
+    && docker-php-ext-configure gd \
+        --with-jpeg \
+        --with-webp \
+        --with-freetype \
+    && docker-php-ext-install gd curl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Instala yt-dlp
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
+    -o /usr/local/bin/yt-dlp \
+    && chmod +x /usr/local/bin/yt-dlp
+
+# Apache: habilita mod_rewrite e configura DocumentRoot pro webhook
+RUN a2enmod rewrite
+
+# Configura VirtualHost apontando pro /var/www/html/webhook
+RUN echo '<VirtualHost *:80>\n\
+    DocumentRoot /var/www/html/webhook\n\
+    <Directory /var/www/html/webhook>\n\
+        AllowOverride All\n\
+        Require all granted\n\
+    </Directory>\n\
+</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
+
+# Copia projeto
+COPY . /var/www/html/
+
+# Permissoes das pastas de storage
+RUN mkdir -p /var/www/html/storage/uploads \
+             /var/www/html/storage/processed \
+             /var/www/html/storage/queue \
+    && chown -R www-data:www-data /var/www/html/storage \
+    && chmod -R 755 /var/www/html/storage
+
+# PHP config: aumenta limites pra upload de midia
+RUN echo "upload_max_filesize = 50M\n\
+post_max_size = 50M\n\
+memory_limit = 256M\n\
+max_execution_time = 120" > /usr/local/etc/php/conf.d/midiaflow.ini
+
+EXPOSE 80

@@ -1,0 +1,11 @@
+services:
+  midiaflow:
+    build: .
+    container_name: midiaflow
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    env_file:
+      - .env
+    volumes:
+      - ./storage:/var/www/html/storage
