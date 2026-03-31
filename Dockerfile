@@ -1,21 +1,22 @@
 FROM php:8.2-apache
 
-# Extensoes PHP necessarias (GD + cURL)
-RUN apt-get update && apt-get install -y \
-    libgd-dev \
+# Dependencias do sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg62-turbo-dev \
     libpng-dev \
     libwebp-dev \
     libfreetype6-dev \
+    libcurl4-openssl-dev \
     ffmpeg \
     python3 \
-    curl \
-    && docker-php-ext-configure gd \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Extensoes PHP (GD para imagens)
+RUN docker-php-ext-configure gd \
         --with-jpeg \
         --with-webp \
         --with-freetype \
-    && docker-php-ext-install gd curl \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && docker-php-ext-install -j$(nproc) gd
 
 # Instala yt-dlp
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
