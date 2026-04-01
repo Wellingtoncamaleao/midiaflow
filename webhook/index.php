@@ -6,6 +6,12 @@
 // Saída: imagem processada + legenda pronta
 // ============================================================
 
+// Log de erros visivel no container
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+error_reporting(E_ALL);
+ini_set('error_log', '/dev/stderr');
+
 require_once __DIR__ . '/../core/TelegramBot.php';
 require_once __DIR__ . '/../core/ImageProcessor.php';
 require_once __DIR__ . '/../core/ClaudeAI.php';
@@ -30,9 +36,13 @@ $claude     = new ClaudeAI($config['claude']['api_key'], $config['claude']['mode
 $downloader = new MediaDownloader($config['storage']['uploads'], $config['ytdlp']['bin']);
 
 // Lê update do Telegram
-$update = json_decode(file_get_contents('php://input'), true);
+$raw = file_get_contents('php://input');
+error_log('[MidiaFlow] Update recebido: ' . substr($raw, 0, 500));
+
+$update = json_decode($raw, true);
 
 if (!$update) {
+    error_log('[MidiaFlow] Update vazio ou invalido');
     http_response_code(200);
     exit;
 }
@@ -61,8 +71,11 @@ if ($text === '/id' || $text === '/id@' . ($bot->getUsername() ?? '')) {
     exit;
 }
 
+error_log("[MidiaFlow] chatId={$chatId} groupId={$groupId} text={$text}");
+
 // Se group_id nao esta configurado, aceita qualquer grupo (e avisa o ID)
 if (!empty($groupId) && (string)$chatId !== (string)$groupId) {
+    error_log("[MidiaFlow] Ignorado — chatId nao bate com groupId");
     http_response_code(200);
     exit;
 }
