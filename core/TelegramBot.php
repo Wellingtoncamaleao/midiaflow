@@ -11,6 +11,17 @@ class TelegramBot
         $this->apiBase = "https://api.telegram.org/bot{$token}";
     }
 
+    // Retorna username do bot (lazy load)
+    public function getUsername(): ?string
+    {
+        static $username = null;
+        if ($username === null) {
+            $me = $this->request('getMe', []);
+            $username = $me['username'] ?? null;
+        }
+        return $username;
+    }
+
     // Envia mensagem de texto (com HTML parse mode)
     // $keyboard = array de inline buttons (opcional)
     public function sendMessage(int|string $chatId, string $text, ?array $keyboard = null): array|false

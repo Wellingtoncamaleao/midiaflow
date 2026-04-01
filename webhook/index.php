@@ -52,14 +52,20 @@ if (!$message) {
 
 $chatId  = $message['chat']['id'];
 $groupId = $config['telegram']['group_id'];
+$text    = trim($message['text'] ?? '');
 
-// Só processa mensagens do grupo configurado
-if ((string)$chatId !== (string)$groupId) {
+// Comando /id — responde com o chat ID (util pra configurar TELEGRAM_GROUP_ID)
+if ($text === '/id' || $text === '/id@' . ($bot->getUsername() ?? '')) {
+    $bot->sendMessage($chatId, "Chat ID: <code>{$chatId}</code>\n\nColoque esse valor na variavel TELEGRAM_GROUP_ID.");
     http_response_code(200);
     exit;
 }
 
-$text = trim($message['text'] ?? '');
+// Se group_id nao esta configurado, aceita qualquer grupo (e avisa o ID)
+if (!empty($groupId) && (string)$chatId !== (string)$groupId) {
+    http_response_code(200);
+    exit;
+}
 
 // Detecta URL na mensagem
 $url = extractUrl($text);
