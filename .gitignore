@@ -5,3 +5,4 @@ storage/queue/*
 !storage/uploads/.gitkeep
 !storage/processed/.gitkeep
 !storage/queue/.gitkeep
+.claude/
