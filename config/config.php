@@ -1,18 +1,23 @@
 <?php
 
+// Helper: busca env var de qualquer fonte (getenv, $_ENV, $_SERVER)
+function env(string $key, string $default = ''): string
+{
+    return getenv($key) ?: ($_ENV[$key] ?? ($_SERVER[$key] ?? $default));
+}
+
 return [
     'telegram' => [
-        'token'      => $_ENV['TELEGRAM_BOT_TOKEN'] ?? '',
-        'group_id'   => $_ENV['TELEGRAM_GROUP_ID'] ?? '',  // ID do grupo onde vc joga os conteúdos
+        'token'      => env('TELEGRAM_BOT_TOKEN'),
+        'group_id'   => env('TELEGRAM_GROUP_ID'),
     ],
     'claude' => [
-        'api_key'    => $_ENV['CLAUDE_API_KEY'] ?? '',
+        'api_key'    => env('CLAUDE_API_KEY'),
         'model'      => 'claude-sonnet-4-20250514',
     ],
     'instagram' => [
-        // Fase 3 — por enquanto vazio
-        'access_token' => $_ENV['INSTAGRAM_ACCESS_TOKEN'] ?? '',
-        'account_id'   => $_ENV['INSTAGRAM_ACCOUNT_ID'] ?? '',
+        'access_token' => env('INSTAGRAM_ACCESS_TOKEN'),
+        'account_id'   => env('INSTAGRAM_ACCOUNT_ID'),
     ],
     'storage' => [
         'uploads'   => __DIR__ . '/../storage/uploads/',
@@ -20,7 +25,7 @@ return [
         'queue'     => __DIR__ . '/../storage/queue/',
     ],
     'ytdlp' => [
-        'bin' => $_ENV['YTDLP_BIN'] ?? 'yt-dlp',  // caminho do binário no VPS
+        'bin' => env('YTDLP_BIN', 'yt-dlp'),
     ],
     // Formatos de saída suportados
     'formats' => [

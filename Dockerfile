@@ -27,12 +27,19 @@ RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
 RUN a2enmod rewrite
 
 # Configura VirtualHost apontando pro /var/www/html/webhook
+# PassEnv garante que env vars do Docker cheguem no PHP
 RUN echo '<VirtualHost *:80>\n\
     DocumentRoot /var/www/html/webhook\n\
     <Directory /var/www/html/webhook>\n\
         AllowOverride All\n\
         Require all granted\n\
     </Directory>\n\
+    PassEnv TELEGRAM_BOT_TOKEN\n\
+    PassEnv TELEGRAM_GROUP_ID\n\
+    PassEnv CLAUDE_API_KEY\n\
+    PassEnv YTDLP_BIN\n\
+    PassEnv INSTAGRAM_ACCESS_TOKEN\n\
+    PassEnv INSTAGRAM_ACCOUNT_ID\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
 # Copia projeto
