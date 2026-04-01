@@ -12,8 +12,8 @@ return [
         'group_id'   => env('TELEGRAM_GROUP_ID'),
     ],
     'claude' => [
-        'api_key'    => env('CLAUDE_API_KEY'),
-        'model'      => 'claude-sonnet-4-20250514',
+        'api_key'    => env('OPENROUTER_API_KEY'),
+        'model'      => env('OPENROUTER_MODEL', 'anthropic/claude-sonnet-4-6'),
     ],
     'instagram' => [
         'access_token' => env('INSTAGRAM_ACCESS_TOKEN'),

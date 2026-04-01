@@ -2,21 +2,32 @@
 
 class ClaudeAI
 {
+    private string $apiUrl;
     private string $apiKey;
     private string $model;
-    private string $apiUrl = 'https://api.anthropic.com/v1/messages';
 
-    public function __construct(string $apiKey, string $model = 'claude-sonnet-4-20250514')
+    public function __construct(string $apiKey, string $model = 'openrouter')
     {
         $this->apiKey = $apiKey;
         $this->model  = $model;
+
+        // Detecta qual API usar baseado no modelo
+        if ($model === 'openrouter' || str_contains($model, '/')) {
+            $this->apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+            if ($model === 'openrouter') {
+                $this->model = 'anthropic/claude-sonnet-4-6';
+            }
+        } else {
+            // Well-Dev API (texto, sem vision)
+            $this->apiUrl = rtrim($apiKey, '/') . '/api/chat.php';
+        }
     }
 
     // Analisa imagem e retorna array com frase, legenda, hashtags, formato_sugerido
     public function analyzeImage(string $imagePath): array
     {
-        $imageData   = base64_encode(file_get_contents($imagePath));
-        $mediaType   = mime_content_type($imagePath) ?: 'image/jpeg';
+        $imageData = base64_encode(file_get_contents($imagePath));
+        $mediaType = mime_content_type($imagePath) ?: 'image/jpeg';
 
         $prompt = <<<PROMPT
 Voce e um especialista em conteudo para Instagram. Analise esta imagem e retorne um JSON com:
@@ -29,19 +40,17 @@ Voce e um especialista em conteudo para Instagram. Analise esta imagem e retorne
 Responda APENAS com o JSON, sem markdown, sem blocos de codigo, sem texto adicional.
 PROMPT;
 
+        // OpenRouter (formato OpenAI com vision)
         $payload = [
-            'model'      => $this->model,
-            'max_tokens' => 1024,
-            'messages'   => [
+            'model'    => $this->model,
+            'messages' => [
                 [
                     'role'    => 'user',
                     'content' => [
                         [
-                            'type'   => 'image',
-                            'source' => [
-                                'type'         => 'base64',
-                                'media_type'   => $mediaType,
-                                'data'         => $imageData,
+                            'type'      => 'image_url',
+                            'image_url' => [
+                                'url' => "data:{$mediaType};base64,{$imageData}",
                             ],
                         ],
                         [
@@ -51,6 +60,7 @@ PROMPT;
                     ],
                 ],
             ],
+            'max_tokens' => 1024,
         ];
 
         $response = $this->request($payload);
@@ -59,7 +69,7 @@ PROMPT;
             return $this->fallback();
         }
 
-        $text = $response['content'][0]['text'] ?? '';
+        $text = $response['choices'][0]['message']['content'] ?? '';
 
         // Remove possivel markdown wrapping (```json ... ```)
         $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
@@ -69,14 +79,14 @@ PROMPT;
         $parsed = json_decode($text, true);
 
         if (!$parsed || !isset($parsed['frase'])) {
-            error_log('Claude retornou resposta nao-parseavel: ' . $text);
+            error_log('[MidiaFlow] Resposta nao-parseavel: ' . substr($text, 0, 300));
             return $this->fallback();
         }
 
         return $parsed;
     }
 
-    // Chamada pra API da Anthropic
+    // Chamada pra OpenRouter API (formato OpenAI)
     private function request(array $payload): array|false
     {
         $ch = curl_init($this->apiUrl);
@@ -84,12 +94,11 @@ PROMPT;
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 60,
+            CURLOPT_TIMEOUT        => 90,
             CURLOPT_CONNECTTIMEOUT => 15,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
-                'x-api-key: ' . $this->apiKey,
-                'anthropic-version: 2023-06-01',
+                'Authorization: Bearer ' . $this->apiKey,
             ],
             CURLOPT_POSTFIELDS => json_encode($payload),
         ]);
@@ -98,7 +107,7 @@ PROMPT;
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
         if (curl_errno($ch)) {
-            error_log('Claude API curl error: ' . curl_error($ch));
+            error_log('[MidiaFlow] API curl error: ' . curl_error($ch));
             curl_close($ch);
             return false;
         }
@@ -106,7 +115,7 @@ PROMPT;
         curl_close($ch);
 
         if ($httpCode !== 200) {
-            error_log("Claude API error HTTP {$httpCode}: " . $response);
+            error_log("[MidiaFlow] API error HTTP {$httpCode}: " . substr($response, 0, 300));
             return false;
         }
 
