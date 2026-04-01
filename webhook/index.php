@@ -12,22 +12,33 @@ ini_set('log_errors', 1);
 error_reporting(E_ALL);
 ini_set('error_log', '/dev/stderr');
 
+// Health check — GET retorna 200 sem processar nada
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    echo json_encode(['status' => 'ok', 'service' => 'midiaflow']);
+    exit;
+}
+
 require_once __DIR__ . '/../core/TelegramBot.php';
 require_once __DIR__ . '/../core/ImageProcessor.php';
 require_once __DIR__ . '/../core/ClaudeAI.php';
 require_once __DIR__ . '/../core/MediaDownloader.php';
 
-// Carrega .env
+// Carrega .env (arquivo local) — no Docker as vars ja vem via environment
 $envFile = __DIR__ . '/../.env';
 if (file_exists($envFile)) {
     foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-        if (str_starts_with(trim($line), '#')) continue;
-        [$key, $value] = explode('=', $line, 2);
-        $_ENV[trim($key)] = trim($value);
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) continue;
+        $parts = explode('=', $line, 2);
+        if (count($parts) === 2) {
+            $_ENV[trim($parts[0])] = trim($parts[1]);
+        }
     }
 }
 
 $config = require __DIR__ . '/../config/config.php';
+
+error_log('[MidiaFlow] Config carregado. Token: ' . (empty($config['telegram']['token']) ? 'VAZIO' : 'ok') . ' GroupID: ' . ($config['telegram']['group_id'] ?: 'VAZIO'));
 
 // Instancia dependências
 $bot        = new TelegramBot($config['telegram']['token']);
