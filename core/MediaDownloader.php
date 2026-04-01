@@ -15,14 +15,71 @@ class MediaDownloader
     // Retorna caminho do arquivo baixado ou false em caso de erro
     public function download(string $url): string|false
     {
-        $fileId   = md5($url . time());
-        $output   = $this->uploadsPath . $fileId;
+        $fileId = md5($url . time());
 
-        // yt-dlp com opções otimizadas:
-        // --no-playlist     → só o post, não o perfil inteiro
-        // --max-filesize    → limite de 50MB (evita vídeos pesados)
-        // -f best           → melhor qualidade disponível
-        // -o                → caminho de saída sem extensão (yt-dlp adiciona)
+        // Tenta API oEmbed do Instagram primeiro (sem login, para posts públicos)
+        if (str_contains($url, 'instagram.com')) {
+            $result = $this->downloadInstagramOembed($url, $fileId);
+            if ($result) return $result;
+        }
+
+        // Fallback: yt-dlp
+        return $this->downloadYtDlp($url, $fileId);
+    }
+
+    // Tenta baixar via oEmbed + scraping da thumbnail pública
+    private function downloadInstagramOembed(string $url, string $fileId): string|false
+    {
+        // Extrai shortcode do link
+        preg_match('/\/(p|reel|tv)\/([A-Za-z0-9_-]+)/', $url, $matches);
+        $shortcode = $matches[2] ?? null;
+
+        if (!$shortcode) return false;
+
+        // oEmbed público do Instagram — retorna thumbnail_url sem login
+        $oembedUrl = 'https://graph.facebook.com/v18.0/instagram_oembed?url=' . urlencode($url) . '&fields=thumbnail_url,title&access_token=instagram_basic';
+
+        // Tenta oEmbed anônimo (funciona para posts públicos)
+        $apiUrl  = 'https://www.instagram.com/p/' . $shortcode . '/?__a=1&__d=dis';
+        $context = stream_context_create([
+            'http' => [
+                'header' => implode("\r\n", [
+                    'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15',
+                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language: pt-BR,pt;q=0.9',
+                    'Cookie: ig_did=1; csrftoken=1;',
+                ]),
+                'timeout' => 15,
+            ],
+        ]);
+
+        $html = @file_get_contents('https://www.instagram.com/p/' . $shortcode . '/', false, $context);
+
+        if ($html) {
+            // Extrai og:image da meta tag
+            preg_match('/<meta property="og:image" content="([^"]+)"/', $html, $imgMatches);
+            $imageUrl = $imgMatches[1] ?? null;
+
+            if ($imageUrl) {
+                $imageUrl  = html_entity_decode($imageUrl);
+                $imagePath = $this->uploadsPath . $fileId . '.jpg';
+                $content   = @file_get_contents($imageUrl);
+
+                if ($content) {
+                    file_put_contents($imagePath, $content);
+                    return $imagePath;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // Download via yt-dlp (fallback)
+    private function downloadYtDlp(string $url, string $fileId): string|false
+    {
+        $output = $this->uploadsPath . $fileId;
+
         $cmd = sprintf(
             '%s --no-playlist --max-filesize 50m -f "best" -o %s %s 2>&1',
             escapeshellcmd($this->ytDlpBin),
@@ -32,30 +89,23 @@ class MediaDownloader
 
         exec($cmd, $outputLines, $exitCode);
 
+        // Loga o erro completo pra debug
         if ($exitCode !== 0) {
-            error_log('yt-dlp error: ' . implode("\n", $outputLines));
+            error_log('yt-dlp error [' . $url . ']: ' . implode(' | ', $outputLines));
             return false;
         }
 
-        // Encontra o arquivo baixado (yt-dlp adiciona a extensão)
         $files = glob($output . '.*');
 
-        if (empty($files)) {
-            return false;
-        }
+        if (empty($files)) return false;
 
         $downloaded = $files[0];
 
-        // Se for vídeo, extrai o primeiro frame como imagem
         if ($this->isVideo($downloaded)) {
             $imagePath = $output . '_thumb.jpg';
             $extracted = $this->extractFrame($downloaded, $imagePath);
-
             if (!$extracted) return false;
-
-            // Remove o vídeo original pra economizar disco
             unlink($downloaded);
-
             return $imagePath;
         }
 
