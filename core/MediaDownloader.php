@@ -80,9 +80,23 @@ class MediaDownloader
     {
         $output = $this->uploadsPath . $fileId;
 
+        // Credenciais do Instagram se configuradas no .env
+        $authFlags = '';
+        $username  = $_ENV['INSTAGRAM_USERNAME'] ?? '';
+        $password  = $_ENV['INSTAGRAM_PASSWORD'] ?? '';
+
+        if ($username && $password) {
+            $authFlags = sprintf(
+                '--username %s --password %s',
+                escapeshellarg($username),
+                escapeshellarg($password)
+            );
+        }
+
         $cmd = sprintf(
-            '%s --no-playlist --max-filesize 50m -f "best" -o %s %s 2>&1',
+            '%s --no-playlist --max-filesize 50m -f "best" %s -o %s %s 2>&1',
             escapeshellcmd($this->ytDlpBin),
+            $authFlags,
             escapeshellarg($output . '.%(ext)s'),
             escapeshellarg($url)
         );
