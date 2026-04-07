@@ -24,8 +24,8 @@ return [
         'processed' => __DIR__ . '/../storage/processed/',
         'queue'     => __DIR__ . '/../storage/queue/',
     ],
-    'ytdlp' => [
-        'bin' => env('YTDLP_BIN', 'yt-dlp'),
+    'cobalt' => [
+        'url' => env('COBALT_URL', 'http://cobalt:9000'),
     ],
     // Formatos de saída suportados
     'formats' => [

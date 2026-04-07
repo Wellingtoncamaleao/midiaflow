@@ -8,7 +8,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfreetype6-dev \
     libcurl4-openssl-dev \
     ffmpeg \
-    python3 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Extensoes PHP (GD para imagens)
@@ -17,11 +16,6 @@ RUN docker-php-ext-configure gd \
         --with-webp \
         --with-freetype \
     && docker-php-ext-install -j$(nproc) gd
-
-# Instala yt-dlp
-RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
-    -o /usr/local/bin/yt-dlp \
-    && chmod +x /usr/local/bin/yt-dlp
 
 # Apache: habilita mod_rewrite e configura DocumentRoot pro webhook
 RUN a2enmod rewrite
@@ -36,8 +30,7 @@ RUN echo '<VirtualHost *:80>\n\
     </Directory>\n\
     PassEnv TELEGRAM_BOT_TOKEN\n\
     PassEnv TELEGRAM_GROUP_ID\n\
-    PassEnv CLAUDE_API_KEY\n\
-    PassEnv YTDLP_BIN\n\
+    PassEnv COBALT_URL\n\
     PassEnv OPENROUTER_API_KEY\n\
     PassEnv OPENROUTER_MODEL\n\
     PassEnv INSTAGRAM_ACCESS_TOKEN\n\

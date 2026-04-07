@@ -3,73 +3,178 @@
 class MediaDownloader
 {
     private string $uploadsPath;
-    private string $ytDlpBin;
+    private string $cobaltUrl;
 
-    public function __construct(string $uploadsPath, string $ytDlpBin = 'yt-dlp')
+    public function __construct(string $uploadsPath, string $cobaltUrl)
     {
         $this->uploadsPath = rtrim($uploadsPath, '/') . '/';
-        $this->ytDlpBin    = $ytDlpBin;
+        $this->cobaltUrl   = rtrim($cobaltUrl, '/');
     }
 
-    // Baixa a mídia de um link (Instagram, Pinterest, etc)
-    // Retorna caminho do arquivo baixado ou false em caso de erro
+    // Baixa a midia via Cobalt API
+    // Retorna caminho do arquivo baixado ou false
     public function download(string $url): string|false
     {
-        $fileId   = md5($url . time());
-        $output   = $this->uploadsPath . $fileId;
+        $fileId = md5($url . time());
 
-        // yt-dlp com opções otimizadas:
-        // --no-playlist     → só o post, não o perfil inteiro
-        // --max-filesize    → limite de 50MB (evita vídeos pesados)
-        // -f best           → melhor qualidade disponível
-        // -o                → caminho de saída sem extensão (yt-dlp adiciona)
-        $cmd = sprintf(
-            '%s --no-playlist --max-filesize 50m -f "best" -o %s %s 2>&1',
-            escapeshellcmd($this->ytDlpBin),
-            escapeshellarg($output . '.%(ext)s'),
-            escapeshellarg($url)
-        );
+        // Passo 1: pedir URL de download ao Cobalt
+        $mediaUrl = $this->cobaltRequest($url);
 
-        exec($cmd, $outputLines, $exitCode);
-
-        if ($exitCode !== 0) {
-            error_log('yt-dlp error: ' . implode("\n", $outputLines));
+        if (!$mediaUrl) {
+            error_log("[MidiaFlow] Cobalt falhou para: {$url}");
             return false;
         }
 
-        // Encontra o arquivo baixado (yt-dlp adiciona a extensão)
-        $files = glob($output . '.*');
+        // Passo 2: baixar o arquivo de midia
+        $filePath = $this->downloadFile($mediaUrl, $fileId);
 
-        if (empty($files)) {
+        if (!$filePath) {
+            error_log("[MidiaFlow] Download do arquivo falhou: {$mediaUrl}");
             return false;
         }
 
-        $downloaded = $files[0];
+        // Se for video, extrai primeiro frame como imagem
+        if ($this->isVideo($filePath)) {
+            $imagePath = $this->uploadsPath . $fileId . '_thumb.jpg';
+            $extracted = $this->extractFrame($filePath, $imagePath);
 
-        // Se for vídeo, extrai o primeiro frame como imagem
-        if ($this->isVideo($downloaded)) {
-            $imagePath = $output . '_thumb.jpg';
-            $extracted = $this->extractFrame($downloaded, $imagePath);
+            if (!$extracted) {
+                error_log("[MidiaFlow] Falha ao extrair frame do video");
+                return false;
+            }
 
-            if (!$extracted) return false;
-
-            // Remove o vídeo original pra economizar disco
-            unlink($downloaded);
-
+            unlink($filePath);
             return $imagePath;
         }
 
-        return $downloaded;
+        return $filePath;
     }
 
-    // Verifica se o arquivo é vídeo pela extensão
+    // Chama a API do Cobalt pra obter URL de download
+    private function cobaltRequest(string $url): string|false
+    {
+        $ch = curl_init($this->cobaltUrl);
+
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'Accept: application/json',
+            ],
+            CURLOPT_POSTFIELDS => json_encode([
+                'url'              => $url,
+                'downloadMode'     => 'auto',
+                'filenameStyle'    => 'basic',
+            ]),
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if (curl_errno($ch)) {
+            error_log('[MidiaFlow] Cobalt curl error: ' . curl_error($ch));
+            curl_close($ch);
+            return false;
+        }
+
+        curl_close($ch);
+
+        $data = json_decode($response, true);
+
+        if (!$data) {
+            error_log("[MidiaFlow] Cobalt resposta invalida HTTP {$httpCode}: " . substr($response, 0, 300));
+            return false;
+        }
+
+        // Cobalt retorna status: "redirect" (link direto), "tunnel" (proxy), "picker" (multiplas midias)
+        $status = $data['status'] ?? '';
+
+        if ($status === 'redirect' || $status === 'tunnel') {
+            return $data['url'] ?? false;
+        }
+
+        if ($status === 'picker' && !empty($data['picker'])) {
+            // Multiplas midias (carousel) — pega a primeira
+            return $data['picker'][0]['url'] ?? false;
+        }
+
+        if ($status === 'error') {
+            error_log('[MidiaFlow] Cobalt error: ' . ($data['error']['code'] ?? 'unknown'));
+            return false;
+        }
+
+        error_log("[MidiaFlow] Cobalt status inesperado: {$status} — " . substr($response, 0, 300));
+        return false;
+    }
+
+    // Baixa arquivo de uma URL pra disco
+    private function downloadFile(string $url, string $fileId): string|false
+    {
+        $ch = curl_init($url);
+
+        // Primeiro faz HEAD pra descobrir content-type
+        curl_setopt_array($ch, [
+            CURLOPT_NOBODY         => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 15,
+        ]);
+
+        curl_exec($ch);
+        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE) ?: '';
+        curl_close($ch);
+
+        // Determina extensao pelo content-type
+        $ext = match (true) {
+            str_contains($contentType, 'jpeg')  => 'jpg',
+            str_contains($contentType, 'png')   => 'png',
+            str_contains($contentType, 'webp')  => 'webp',
+            str_contains($contentType, 'gif')   => 'gif',
+            str_contains($contentType, 'mp4')   => 'mp4',
+            str_contains($contentType, 'webm')  => 'webm',
+            default                             => 'jpg',
+        };
+
+        $filePath = $this->uploadsPath . $fileId . '.' . $ext;
+
+        // Baixa o arquivo
+        $ch = curl_init($url);
+        $fp = fopen($filePath, 'wb');
+
+        curl_setopt_array($ch, [
+            CURLOPT_FILE           => $fp,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 120,
+            CURLOPT_CONNECTTIMEOUT => 15,
+        ]);
+
+        curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error    = curl_error($ch);
+
+        curl_close($ch);
+        fclose($fp);
+
+        if ($error || $httpCode !== 200 || !file_exists($filePath) || filesize($filePath) === 0) {
+            error_log("[MidiaFlow] Download falhou HTTP {$httpCode}: {$error}");
+            @unlink($filePath);
+            return false;
+        }
+
+        return $filePath;
+    }
+
+    // Verifica se o arquivo e video pela extensao
     private function isVideo(string $path): bool
     {
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         return in_array($ext, ['mp4', 'webm', 'mov', 'avi', 'mkv']);
     }
 
-    // Extrai o primeiro frame do vídeo usando ffmpeg
+    // Extrai o primeiro frame do video usando ffmpeg
     private function extractFrame(string $videoPath, string $outputPath): bool
     {
         $cmd = sprintf(
@@ -82,7 +187,7 @@ class MediaDownloader
         return $code === 0 && file_exists($outputPath);
     }
 
-    // Valida se a URL é de uma rede suportada
+    // Valida se a URL e de uma rede suportada
     public function isSupported(string $url): bool
     {
         $supported = [

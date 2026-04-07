@@ -44,7 +44,7 @@ error_log('[MidiaFlow] Config carregado. Token: ' . (empty($config['telegram']['
 $bot        = new TelegramBot($config['telegram']['token']);
 $processor  = new ImageProcessor($config['formats']);
 $claude     = new ClaudeAI($config['claude']['api_key'], $config['claude']['model']);
-$downloader = new MediaDownloader($config['storage']['uploads'], $config['ytdlp']['bin']);
+$downloader = new MediaDownloader($config['storage']['uploads'], $config['cobalt']['url']);
 
 // Lê update do Telegram
 $raw = file_get_contents('php://input');
