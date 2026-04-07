@@ -55,7 +55,7 @@ class TelegramBot
     }
 
     // Responde callback query (remove "carregando" do botao)
-    public function answerCallbackQuery(string $callbackQueryId, string $text = ''): array|false
+    public function answerCallbackQuery(string $callbackQueryId, string $text = ''): array|bool
     {
         return $this->request('answerCallbackQuery', [
             'callback_query_id' => $callbackQueryId,
@@ -92,7 +92,7 @@ class TelegramBot
     }
 
     // Chamada generica pra API do Telegram
-    private function request(string $method, array $params, bool $multipart = false): array|false
+    private function request(string $method, array $params, bool $multipart = false): array|bool
     {
         $ch = curl_init("{$this->apiBase}/{$method}");
 
