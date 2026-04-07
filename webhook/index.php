@@ -161,7 +161,9 @@ function handleCallback(array $callback, TelegramBot $bot, ImageProcessor $proce
 {
     $chatId          = $callback['message']['chat']['id'];
     $callbackQueryId = $callback['id'];
-    $data            = $callback['data'];
+    $data            = $callback['data'] ?? '';
+
+    error_log("[MidiaFlow] Callback recebido: data={$data} chatId={$chatId}");
 
     $bot->answerCallbackQuery($callbackQueryId, '⏳ Processando...');
 
@@ -170,6 +172,7 @@ function handleCallback(array $callback, TelegramBot $bot, ImageProcessor $proce
     [, $fileId, $formato] = explode(':', $data, 3);
 
     $metaPath = $config['storage']['uploads'] . $fileId . '.json';
+    error_log("[MidiaFlow] Meta path: {$metaPath} exists=" . (file_exists($metaPath) ? 'sim' : 'nao'));
 
     if (!file_exists($metaPath)) {
         $bot->sendMessage($chatId, '❌ Sessão expirada. Manda o link de novo.');
@@ -179,6 +182,8 @@ function handleCallback(array $callback, TelegramBot $bot, ImageProcessor $proce
     $meta      = json_decode(file_get_contents($metaPath), true);
     $mediaPath = $meta['media_path'];
     $analysis  = $meta['analysis'];
+
+    error_log("[MidiaFlow] Processando: formato={$formato} media={$mediaPath} exists=" . (file_exists($mediaPath) ? 'sim' : 'nao'));
 
     $outputPath = $config['storage']['processed'] . $fileId . "_{$formato}.jpg";
     $success    = $processor->process($mediaPath, $outputPath, $formato);
