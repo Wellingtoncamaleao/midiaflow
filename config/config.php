@@ -11,9 +11,10 @@ return [
         'token'      => env('TELEGRAM_BOT_TOKEN'),
         'group_id'   => env('TELEGRAM_GROUP_ID'),
     ],
-    'claude' => [
-        'api_key'    => env('OPENROUTER_API_KEY'),
-        'model'      => env('OPENROUTER_MODEL', 'anthropic/claude-sonnet-4-6'),
+    'vision' => [
+        'api_key'    => env('OPENAI_API_KEY', env('OPENROUTER_API_KEY')),
+        'model'      => env('VISION_MODEL', 'gpt-4o-mini'),
+        'provider'   => env('VISION_PROVIDER', env('OPENAI_API_KEY') ? 'openai' : 'openrouter'),
     ],
     'instagram' => [
         'access_token' => env('INSTAGRAM_ACCESS_TOKEN'),

@@ -31,8 +31,10 @@ RUN echo '<VirtualHost *:80>\n\
     PassEnv TELEGRAM_BOT_TOKEN\n\
     PassEnv TELEGRAM_GROUP_ID\n\
     PassEnv COBALT_URL\n\
+    PassEnv OPENAI_API_KEY\n\
     PassEnv OPENROUTER_API_KEY\n\
-    PassEnv OPENROUTER_MODEL\n\
+    PassEnv VISION_MODEL\n\
+    PassEnv VISION_PROVIDER\n\
     PassEnv INSTAGRAM_ACCESS_TOKEN\n\
     PassEnv INSTAGRAM_ACCOUNT_ID\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf

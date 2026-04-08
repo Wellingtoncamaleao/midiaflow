@@ -6,21 +6,16 @@ class ClaudeAI
     private string $apiKey;
     private string $model;
 
-    public function __construct(string $apiKey, string $model = 'openrouter')
+    public function __construct(string $apiKey, string $model = 'gpt-4o-mini', string $provider = 'openai')
     {
         $this->apiKey = $apiKey;
         $this->model  = $model;
 
-        // Detecta qual API usar baseado no modelo
-        if ($model === 'openrouter' || str_contains($model, '/')) {
-            $this->apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-            if ($model === 'openrouter') {
-                $this->model = 'anthropic/claude-sonnet-4-6';
-            }
-        } else {
-            // Well-Dev API (texto, sem vision)
-            $this->apiUrl = rtrim($apiKey, '/') . '/api/chat.php';
-        }
+        $this->apiUrl = match ($provider) {
+            'openai'     => 'https://api.openai.com/v1/chat/completions',
+            'openrouter' => 'https://openrouter.ai/api/v1/chat/completions',
+            default      => 'https://api.openai.com/v1/chat/completions',
+        };
     }
 
     // Analisa imagem e retorna array com frase, legenda, hashtags, formato_sugerido
