@@ -15,7 +15,7 @@ RUN docker-php-ext-configure gd \
         --with-jpeg \
         --with-webp \
         --with-freetype \
-    && docker-php-ext-install -j$(nproc) gd
+    && docker-php-ext-install -j$(nproc) gd pdo_sqlite
 
 # Apache: habilita mod_rewrite e configura DocumentRoot pro webhook
 RUN a2enmod rewrite
@@ -46,8 +46,9 @@ COPY . /var/www/html/
 RUN mkdir -p /var/www/html/storage/uploads \
              /var/www/html/storage/processed \
              /var/www/html/storage/queue \
-    && chown -R www-data:www-data /var/www/html/storage \
-    && chmod -R 755 /var/www/html/storage
+             /var/www/html/data/fundos \
+    && chown -R www-data:www-data /var/www/html/storage /var/www/html/data \
+    && chmod -R 755 /var/www/html/storage /var/www/html/data
 
 # PHP config: aumenta limites pra upload de midia
 RUN echo "upload_max_filesize = 50M\n\

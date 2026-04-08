@@ -186,6 +186,91 @@ PROMPT;
         return $this->parseJson($text);
     }
 
+    // Extrai texto/frase de uma imagem via OCR (GPT-4o vision)
+    public function extractText(string $imagePath): string|false
+    {
+        $dataUrl = $this->imageToDataUrl($imagePath);
+
+        $prompt = 'Extraia TODO o texto visivel nesta imagem. Retorne apenas o texto, sem explicacoes.';
+
+        return $this->visionRequest($prompt, $dataUrl);
+    }
+
+    // Descreve a imagem em detalhes (pra usar no DALL-E)
+    public function describeImage(string $imagePath): string|false
+    {
+        $dataUrl = $this->imageToDataUrl($imagePath);
+
+        $prompt = 'Descreva esta imagem em detalhes para recriar algo similar com IA generativa. Inclua: cenario, cores dominantes, estilo artistico, composicao, iluminacao, elementos visuais. Se tiver texto na imagem, inclua o texto exato. Maximo 200 palavras.';
+
+        return $this->visionRequest($prompt, $dataUrl);
+    }
+
+    // Request de vision que retorna texto puro (nao JSON)
+    private function visionRequest(string $prompt, string $dataUrl): string|false
+    {
+        // Tenta WellDev primeiro
+        $url = $this->config['welldev_url'] ?? '';
+        $key = $this->config['welldev_key'] ?? '';
+
+        if ($url && $key) {
+            $endpoint = rtrim($url, '/') . '/api/chat.php';
+            $ch = curl_init($endpoint);
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 90,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'x-api-token: ' . $key,
+                ],
+                CURLOPT_POSTFIELDS => json_encode([
+                    'message'   => $prompt,
+                    'model'     => 'openai',
+                    'app_id'    => 'midiaflow',
+                    'sync'      => true,
+                    'timeout'   => 80,
+                    'image_url' => $dataUrl,
+                    'fallback'  => false,
+                ], JSON_UNESCAPED_UNICODE),
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200) {
+                $data = json_decode($response, true);
+                if (!empty($data['ok']) && !empty($data['response'])) {
+                    return $data['response'];
+                }
+            }
+        }
+
+        // Fallback: OpenAI direto
+        $openaiKey = $this->config['openai_key'] ?? '';
+        if ($openaiKey) {
+            $result = $this->callVisionAPI(
+                'https://api.openai.com/v1/chat/completions',
+                $openaiKey, 'gpt-4o-mini', $prompt, $dataUrl
+            );
+            if ($result) {
+                return $result['choices'][0]['message']['content'] ?? false;
+            }
+        }
+
+        return false;
+    }
+
+    // Converte imagem em data URL base64
+    private function imageToDataUrl(string $imagePath): string
+    {
+        $imageData = base64_encode(file_get_contents($imagePath));
+        $mediaType = mime_content_type($imagePath) ?: 'image/jpeg';
+        return "data:{$mediaType};base64,{$imageData}";
+    }
+
     // Extrai JSON de uma string (remove markdown wrapping)
     private function parseJson(string $text): array|false
     {

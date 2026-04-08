@@ -41,8 +41,8 @@ class TelegramBot
         return $this->request('sendMessage', $params);
     }
 
-    // Envia foto com legenda
-    public function sendPhoto(int|string $chatId, string $photoPath, string $caption = ''): array|false
+    // Envia foto com legenda e botoes opcionais
+    public function sendPhoto(int|string $chatId, string $photoPath, string $caption = '', ?array $keyboard = null): array|bool
     {
         $params = [
             'chat_id'    => $chatId,
@@ -50,6 +50,12 @@ class TelegramBot
             'caption'    => $caption,
             'photo'      => new CURLFile($photoPath, 'image/jpeg'),
         ];
+
+        if ($keyboard) {
+            $params['reply_markup'] = json_encode([
+                'inline_keyboard' => $keyboard,
+            ]);
+        }
 
         return $this->request('sendPhoto', $params, true);
     }

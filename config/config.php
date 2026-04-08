@@ -29,6 +29,9 @@ return [
     'cobalt' => [
         'url' => env('COBALT_URL', 'http://cobalt:9000'),
     ],
+    'database' => [
+        'path' => '/var/www/html/data/midiaflow.db',
+    ],
     // Formatos de saída suportados
     'formats' => [
         'feed'    => ['width' => 1080, 'height' => 1080],   // quadrado
