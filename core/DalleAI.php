@@ -65,15 +65,18 @@ class DalleAI
     public function modelar(string $descricaoImagem, string $frase, string $perfil): string|false
     {
         $prompt = <<<PROMPT
-Crie uma imagem artistica para Instagram com estas caracteristicas:
+Crie uma imagem artistica para Instagram. TUDO EM PORTUGUES BRASILEIRO.
 
-Estilo visual inspirado em: {$descricaoImagem}
+Estilo visual: inspire-se nesta descricao de referencia, mas crie algo ORIGINAL (NAO copie arrobas, marcas dagua ou creditos da referencia):
+{$descricaoImagem}
 
-A imagem deve conter o texto "{$frase}" escrito de forma legivel e estilosa, integrado ao visual.
-No canto inferior direito, incluir discretamente o texto "{$perfil}".
-
-A imagem deve ser impactante, com cores vibrantes e composicao profissional.
-Nao incluir bordas, molduras ou elementos de interface. Apenas a arte.
+REGRAS OBRIGATORIAS:
+1. Escreva EXATAMENTE este texto em PORTUGUES na imagem, de forma legivel e estilosa: "{$frase}"
+2. No canto inferior direito, escreva EXATAMENTE: "{$perfil}" (e NENHUM outro arroba)
+3. NAO inclua nenhum outro texto, arroba, marca dagua ou credito alem dos dois acima
+4. O texto deve estar em PORTUGUES BRASILEIRO, nunca em ingles
+5. Composicao profissional, cores vibrantes, impactante
+6. Sem bordas, molduras ou elementos de interface
 PROMPT;
 
         $outputPath = sys_get_temp_dir() . '/midiaflow_modelar_' . md5(time() . rand()) . '.png';
@@ -84,11 +87,14 @@ PROMPT;
     public function clonarFundo(string $descricaoImagem): string|false
     {
         $prompt = <<<PROMPT
-Recrie esta cena como uma imagem limpa SEM NENHUM TEXTO, SEM letras, SEM palavras, SEM watermarks:
+Recrie esta cena como uma imagem LIMPA, SEM NENHUM TEXTO, SEM letras, SEM palavras, SEM arrobas, SEM marcas dagua, SEM creditos:
 
 {$descricaoImagem}
 
-A imagem deve manter o mesmo estilo visual, cores e composicao, mas completamente limpa — apenas o cenario/fundo, sem qualquer elemento textual.
+REGRAS:
+1. ZERO texto na imagem — apenas o cenario/fundo
+2. Manter o mesmo estilo visual, cores e composicao
+3. Imagem limpa e profissional, pronta pra usar como template
 PROMPT;
 
         $outputPath = sys_get_temp_dir() . '/midiaflow_fundo_' . md5(time() . rand()) . '.png';
@@ -99,14 +105,16 @@ PROMPT;
     public function criar(string $descricaoFundo, string $frase, string $perfil): string|false
     {
         $prompt = <<<PROMPT
-Crie uma imagem artistica para Instagram com estas caracteristicas:
+Crie uma imagem artistica para Instagram. TUDO EM PORTUGUES BRASILEIRO.
 
-Cenario/fundo: {$descricaoFundo}
+Cenario/fundo baseado em: {$descricaoFundo}
 
-A imagem deve conter o texto "{$frase}" escrito de forma legivel e estilosa, integrado ao visual.
-No canto inferior direito, incluir discretamente o texto "{$perfil}".
-
-Composicao profissional, cores vibrantes, impactante. Sem bordas ou molduras.
+REGRAS OBRIGATORIAS:
+1. Escreva EXATAMENTE este texto em PORTUGUES na imagem, de forma legivel e estilosa: "{$frase}"
+2. No canto inferior direito, escreva EXATAMENTE: "{$perfil}" (e NENHUM outro arroba)
+3. NAO inclua nenhum outro texto, arroba, marca dagua ou credito
+4. Composicao profissional, cores vibrantes, impactante
+5. Sem bordas, molduras ou elementos de interface
 PROMPT;
 
         $outputPath = sys_get_temp_dir() . '/midiaflow_criar_' . md5(time() . rand()) . '.png';

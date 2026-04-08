@@ -201,7 +201,7 @@ PROMPT;
     {
         $dataUrl = $this->imageToDataUrl($imagePath);
 
-        $prompt = 'Descreva esta imagem em detalhes para recriar algo similar com IA generativa. Inclua: cenario, cores dominantes, estilo artistico, composicao, iluminacao, elementos visuais. Se tiver texto na imagem, inclua o texto exato. Maximo 200 palavras.';
+        $prompt = 'Descreva esta imagem em detalhes para recriar algo similar com IA generativa. Inclua: cenario, cores dominantes, estilo artistico, composicao, iluminacao, elementos visuais. NAO inclua arrobas (@), marcas dagua ou creditos na descricao — ignore esses elementos. Se tiver frase/texto motivacional, inclua o texto. Maximo 200 palavras.';
 
         return $this->visionRequest($prompt, $dataUrl);
     }
