@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libwebp-dev \
     libfreetype6-dev \
     libcurl4-openssl-dev \
+    libsqlite3-dev \
     ffmpeg \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
