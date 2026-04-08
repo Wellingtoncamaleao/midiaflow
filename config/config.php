@@ -11,10 +11,11 @@ return [
         'token'      => env('TELEGRAM_BOT_TOKEN'),
         'group_id'   => env('TELEGRAM_GROUP_ID'),
     ],
-    'vision' => [
-        'api_key'    => env('OPENAI_API_KEY', env('OPENROUTER_API_KEY')),
-        'model'      => env('VISION_MODEL', 'gpt-4o-mini'),
-        'provider'   => env('VISION_PROVIDER', env('OPENAI_API_KEY') ? 'openai' : 'openrouter'),
+    'ai' => [
+        'welldev_url'    => env('WELLDEV_API_URL'),
+        'welldev_key'    => env('WELLDEV_API_KEY'),
+        'openai_key'     => env('OPENAI_API_KEY'),
+        'openrouter_key' => env('OPENROUTER_API_KEY'),
     ],
     'instagram' => [
         'access_token' => env('INSTAGRAM_ACCESS_TOKEN'),
